@@ -75,3 +75,9 @@ Den färdiga versionen skapas i katalogen `dist`.
 Frontenden driftsätts automatiskt till GitHub Pages med GitHub Actions vid push till `main`.
 
 Vid deployment används miljövariabeln `VITE_API_URL` för adressen till det driftsatta backend-API:t.
+
+## Funktionalitet
+
+- Hämtar dokument från gruppens JSON-API
+- Visar en lista med dokument
+- Visar innehållet i ett valt dokument
