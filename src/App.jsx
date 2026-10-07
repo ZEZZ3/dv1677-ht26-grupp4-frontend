@@ -14,6 +14,19 @@ function App() {
   const [newTitle, setNewTitle] = useState('')
   const [newContent, setNewContent] = useState('')
 
+  function handleUnauthorized(response) {
+  if (response.status === 401) {
+    localStorage.removeItem('token')
+    setToken(null)
+    setUser(null)
+    setDocuments([])
+    setSelectedDocument(null)
+    return true
+  }
+
+  return false
+}
+
 useEffect(() => {
   if (!token) {
     return
@@ -49,20 +62,6 @@ useEffect(() => {
     if (!token) {
       return
     }
-
-  function handleUnauthorized(response) {
-    if (response.status === 401) {
-      localStorage.removeItem('token')
-      setToken(null)
-      setUser(null)
-      setDocuments([])
-      setSelectedDocument(null)
-      return true
-    }
-
-    return false
-  }
-
 
     async function fetchDocuments() {
       setLoading(true)
