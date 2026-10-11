@@ -13,6 +13,21 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newContent, setNewContent] = useState('')
+  const [editTitle, setEditTitle] = useState('')
+  const [editContent, setEditContent] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [shareEmail, setShareEmail] = useState('')
+  const [sharing, setSharing] = useState(false)
+  const [shareMessage, setShareMessage] = useState('')
+  const [comments, setComments] = useState([])
+  const [commentLine, setCommentLine] = useState('')
+  const [commentText, setCommentText] = useState('')
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  const [commentSubmitting, setCommentSubmitting] = useState(false)
+  const [editingCommentId, setEditingCommentId] = useState(null)
+  const [editingCommentText, setEditingCommentText] = useState('')
+  const [editingCommentLine, setEditingCommentLine] = useState('')
+  const [commentSaving, setCommentSaving] = useState(false)
 
   function handleUnauthorized(response) {
   if (response.status === 401) {
@@ -114,6 +129,290 @@ useEffect(() => {
 
       const data = await response.json()
       setSelectedDocument(data)
+      setEditTitle(data.title)
+      setEditContent(data.content || '')
+      fetchComments(data._id)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function updateDocument(event) {
+    event.preventDefault()
+
+    if (!selectedDocument) {
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+
+    try {
+      const response = await fetch(
+        `${API_URL}/documents/${selectedDocument._id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            title: editTitle,
+            content: editContent,
+          }),
+        }
+      )
+
+      if (handleUnauthorized(response)) {
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error('Could not update document')
+      }
+
+      const updatedDocument = await response.json()
+
+      setSelectedDocument(updatedDocument)
+
+      setDocuments((currentDocuments) =>
+        currentDocuments.map((document) =>
+          document._id === updatedDocument._id
+            ? updatedDocument
+            : document
+        )
+      )
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+
+  async function shareDocument(event) {
+    event.preventDefault()
+
+    if (!selectedDocument) {
+      return
+    }
+
+    setSharing(true)
+    setShareMessage('')
+    setError(null)
+
+    try {
+      const response = await fetch(
+        `${API_URL}/documents/${selectedDocument._id}/share`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            email: shareEmail.trim(),
+          }),
+        }
+      )
+
+      if (handleUnauthorized(response)) {
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error('Kunde inte dela dokumentet')
+      }
+
+      const updatedDocument = await response.json()
+
+      setSelectedDocument(updatedDocument)
+      setShareEmail('')
+      setShareMessage('Dokumentet har delats!')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSharing(false)
+    }
+  }
+
+  async function fetchComments(documentId) {
+    setCommentsLoading(true)
+    setComments([])
+    setError(null)
+
+    try {
+      const response = await fetch(
+        `${API_URL}/comments/${documentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (handleUnauthorized(response)) {
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error('Kunde inte hämta kommentarer')
+      }
+
+      const data = await response.json()
+      setComments(data)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setCommentsLoading(false)
+    }
+  }
+
+
+  async function addComment(event) {
+    event.preventDefault()
+
+    if (!selectedDocument) {
+      return
+    }
+
+    setCommentSubmitting(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`${API_URL}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          documentId: selectedDocument._id,
+          lineNumber: Number(commentLine),
+          text: commentText.trim(),
+        }),
+      })
+
+      if (handleUnauthorized(response)) {
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error('Kunde inte skapa kommentaren')
+      }
+
+      const newComment = await response.json()
+
+      setComments((currentComments) => [
+        ...currentComments,
+        newComment,
+      ])
+
+      setCommentLine('')
+      setCommentText('')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setCommentSubmitting(false)
+    }
+  }
+
+  async function updateComment(event) {
+    event.preventDefault()
+
+    if (!editingCommentId) {
+      return
+    }
+
+    setCommentSaving(true)
+    setError(null)
+
+    try {
+      const response = await fetch(
+        `${API_URL}/comments/${editingCommentId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            lineNumber: Number(editingCommentLine),
+            text: editingCommentText.trim(),
+          }),
+        }
+      )
+
+      if (handleUnauthorized(response)) {
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error('Kunde inte uppdatera kommentaren')
+      }
+
+      const updatedComment = await response.json()
+
+      setComments((currentComments) =>
+        currentComments.map((comment) =>
+          comment._id === updatedComment._id
+            ? updatedComment
+            : comment
+        )
+      )
+
+      setEditingCommentId(null)
+      setEditingCommentText('')
+      setEditingCommentLine('')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setCommentSaving(false)
+    }
+  }
+
+
+  async function deleteComment(commentId) {
+    const confirmed = window.confirm(
+      'Är du säker på att du vill ta bort kommentaren?'
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setError(null)
+
+    try {
+      const response = await fetch(
+        `${API_URL}/comments/${commentId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (handleUnauthorized(response)) {
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error('Kunde inte ta bort kommentaren')
+      }
+
+      setComments((currentComments) =>
+        currentComments.filter(
+          (comment) => comment._id !== commentId
+        )
+      )
+
+      if (editingCommentId === commentId) {
+        setEditingCommentId(null)
+        setEditingCommentText('')
+        setEditingCommentLine('')
+      }
     } catch (err) {
       setError(err.message)
     }
@@ -242,8 +541,167 @@ useEffect(() => {
 
       {selectedDocument && (
         <section>
-          <h2>{selectedDocument.title}</h2>
-          <p>{selectedDocument.content}</p>
+          <h2>Redigera dokument</h2>
+
+          <form onSubmit={updateDocument}>
+            <div>
+              <label htmlFor="edit-title">Titel</label>
+              <input
+                id="edit-title"
+                type="text"
+                value={editTitle}
+                onChange={(event) => setEditTitle(event.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="edit-content">Innehåll</label>
+              <textarea
+                id="edit-content"
+                value={editContent}
+                onChange={(event) => setEditContent(event.target.value)}
+                rows={10}
+              />
+            </div>
+
+            <button type="submit" disabled={saving}>
+              {saving ? 'Sparar...' : 'Spara ändringar'}
+            </button>
+          </form>
+
+          <h3>Dela dokument</h3>
+
+          <form onSubmit={shareDocument}>
+            <div>
+              <label htmlFor="share-email">Användarens e-post</label>
+              <input
+                id="share-email"
+                type="email"
+                value={shareEmail}
+                onChange={(event) => setShareEmail(event.target.value)}
+                placeholder="namn@example.com"
+                required
+              />
+            </div>
+
+            <button type="submit" disabled={sharing}>
+              {sharing ? 'Delar...' : 'Dela dokument'}
+            </button>
+          </form>
+
+          {shareMessage && <p>{shareMessage}</p>}
+
+          <h3>Kommentarer</h3>
+
+          <form onSubmit={addComment}>
+          <div>
+            <label htmlFor="comment-line">Radnummer</label>
+            <input
+              id="comment-line"
+              type="number"
+              min="1"
+              step="1"
+              value={commentLine}
+              onChange={(event) => setCommentLine(event.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="comment-text">Kommentar</label>
+            <textarea
+              id="comment-text"
+              value={commentText}
+              onChange={(event) => setCommentText(event.target.value)}
+              placeholder="Skriv din kommentar här..."
+              required
+            />
+          </div>
+
+          <button type="submit" disabled={commentSubmitting}>
+            {commentSubmitting ? 'Skickar...' : 'Lägg till kommentar'}
+          </button>
+        </form>
+
+          {commentsLoading && <p>Laddar kommentarer...</p>}
+
+          {!commentsLoading && comments.length === 0 && (
+            <p>Det finns inga kommentarer för detta dokument.</p>
+          )}
+
+          {!commentsLoading && comments.length > 0 && (
+            <ul>
+              {comments.map((comment) => (
+                <li key={comment._id}>
+                  <strong>Rad {comment.lineNumber}:</strong>{' '}
+                  {comment.text}
+                  {editingCommentId === comment._id && (
+                    <form onSubmit={updateComment}>
+                      <div>
+                        <label htmlFor="editing-comment-line">Radnummer</label>
+                        <input
+                          id="editing-comment-line"
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={editingCommentLine}
+                          onChange={(event) => setEditingCommentLine(event.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="editing-comment-text">Kommentar</label>
+                        <textarea
+                          id="editing-comment-text"
+                          value={editingCommentText}
+                          onChange={(event) => setEditingCommentText(event.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <button type="submit" disabled={commentSaving}>
+                        {commentSaving ? 'Sparar...' : 'Spara kommentar'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCommentId(null)
+                          setEditingCommentText('')
+                          setEditingCommentLine('')
+                        }}
+                      >
+                        Avbryt
+                      </button>
+                    </form>
+                  )}
+                  {user && String(comment.userId) === String(user.id) && (
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCommentId(comment._id)
+                          setEditingCommentText(comment.text)
+                          setEditingCommentLine(String(comment.lineNumber))
+                        }}
+                      >
+                        Redigera
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => deleteComment(comment._id)}
+                      >
+                        Ta bort
+                      </button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
     </main>
