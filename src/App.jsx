@@ -427,7 +427,55 @@ useEffect(() => {
     }
   }
 
+  //kod for socket kommentarer
+  useEffect(() => {
+  if (!socket || !selectedDocument?._id) {
+    return
+  }
 
+  const documentId = selectedDocument._id
+
+  // Gå med i dokumentets Socket.IO-rum
+  socket.emit('join', documentId)
+
+  // Ny kommentar
+  function handleCommentCreated(newComment) {
+    if (String(newComment.documentId) !== String(documentId)) {
+      return
+    }
+
+    setComments((currentComments) => {
+      const exists = currentComments.some(
+        (comment) =>  String(comment._id) === String(newComment._id)
+      )
+
+      if (exists) {
+        return currentComments
+      }
+
+      return [...currentComments, newComment]
+    })
+  }
+
+  // Borttagen kommentar
+  function handleCommentDeleted({ _id }) {
+    setComments((currentComments) =>
+      currentComments.filter(
+        (comment) => comment._id !== _id
+      )
+    )
+  }
+
+  socket.on('comment:created', handleCommentCreated)
+  socket.on('comment:deleted', handleCommentDeleted)
+
+  return () => {
+    socket.off('comment:created', handleCommentCreated)
+    socket.off('comment:deleted', handleCommentDeleted)
+  }
+}, [socket, selectedDocument?._id])
+
+//kod for socket for comments ends here
   async function fetchComments(documentId) {
     setCommentsLoading(true)
     setComments([])
