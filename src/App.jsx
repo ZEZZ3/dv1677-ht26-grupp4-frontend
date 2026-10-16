@@ -4,7 +4,7 @@ import './App.css'
 import AuthForm from './components/AuthForm.jsx'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://dv1677-crusher.nplab.bth.se'
 
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem('token'))
