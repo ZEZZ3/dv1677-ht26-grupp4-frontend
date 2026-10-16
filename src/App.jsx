@@ -542,14 +542,6 @@ useEffect(() => {
       }
 
       await response.json()
-      /** 
-      const newComment = await response.json()
-
-      setComments((currentComments) => [
-        ...currentComments,
-        newComment,
-      ])
-        */
 
       setCommentLine('')
       setCommentText('')
