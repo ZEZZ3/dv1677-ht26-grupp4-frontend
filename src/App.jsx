@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import AuthForm from './components/AuthForm.jsx'
+import CodeEditor from './components/CodeEditor'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
@@ -13,8 +14,12 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newContent, setNewContent] = useState('')
+  const [newType, setNewType] = useState('text')
+  const [newLanguage, setNewLanguage] = useState('javascript')
   const [editTitle, setEditTitle] = useState('')
   const [editContent, setEditContent] = useState('')
+  const [editType, setEditType] = useState('text')
+  const [editLanguage, setEditLanguage] = useState('javascript')
   const [saving, setSaving] = useState(false)
   const [shareEmail, setShareEmail] = useState('')
   const [sharing, setSharing] = useState(false)
@@ -131,6 +136,8 @@ useEffect(() => {
       setSelectedDocument(data)
       setEditTitle(data.title)
       setEditContent(data.content || '')
+      setEditType(data.type || 'text')
+      setEditLanguage(data.language || 'javascript')
       fetchComments(data._id)
     } catch (err) {
       setError(err.message)
@@ -159,6 +166,8 @@ useEffect(() => {
           body: JSON.stringify({
             title: editTitle,
             content: editContent,
+            type: editType,
+            language: editLanguage,
           }),
         }
       )
@@ -432,7 +441,8 @@ useEffect(() => {
         body: JSON.stringify({
           title: newTitle,
           content: newContent,
-          type: 'text',
+          type: newType,
+          language: newLanguage
         }),
       })
 
@@ -441,7 +451,10 @@ useEffect(() => {
       }
 
       if (!response.ok) {
-        throw new Error('Could not create document')
+        const errorText = await response.text()
+        console.error('Create document failed:', response.status, errorText)
+
+        throw new Error(`Could not create document (${response.status})`)
       }
 
       const document = await response.json()
@@ -453,6 +466,8 @@ useEffect(() => {
 
       setNewTitle('')
       setNewContent('')
+      setNewType('text')
+      setNewLanguage('javascript')
     } catch (err) {
       setError(err.message)
     }
@@ -503,7 +518,34 @@ useEffect(() => {
           required
         />
       </div>
+      <div>
+        <label htmlFor="document-type">Dokumenttyp</label>
+        <select
+          id="document-type"
+          value={newType}
+          onChange={(event) => setNewType(event.target.value)}
+        >
+          <option value="text">Vanlig text</option>
+          <option value="code">Kod</option>
+        </select>
+      </div>
 
+      {newType === 'code' && (
+        <div>
+          <label htmlFor="document-language">Programmeringsspråk</label>
+          <select
+            id="document-language"
+            value={newLanguage}
+            onChange={(event) => setNewLanguage(event.target.value)}
+          >
+            <option value="javascript">JavaScript</option>
+            <option value="python">Python</option>
+            <option value="json">JSON</option>
+            <option value="html">HTML</option>
+            <option value="css">CSS</option>
+          </select>
+        </div>
+      )}
       <div>
         <label htmlFor="content">Innehåll</label>
         <textarea
@@ -556,13 +598,54 @@ useEffect(() => {
             </div>
 
             <div>
-              <label htmlFor="edit-content">Innehåll</label>
-              <textarea
-                id="edit-content"
-                value={editContent}
-                onChange={(event) => setEditContent(event.target.value)}
-                rows={10}
-              />
+              <label htmlFor="edit-type">Dokumenttyp</label>
+              <select
+                id="edit-type"
+                value={editType}
+                onChange={(event) => setEditType(event.target.value)}
+              >
+                <option value="text">Text</option>
+                <option value="code">Kod</option>
+              </select>
+            </div>
+
+            <div>
+              {editType === 'code' ? (
+                <>
+                  <label>Innehåll (kodläge)</label>
+
+                  <div>
+                    <label htmlFor="edit-language">Programmeringsspråk</label>
+                    <select
+                      id="edit-language"
+                      value={editLanguage}
+                      onChange={(event) => setEditLanguage(event.target.value)}
+                    >
+                      <option value="javascript">JavaScript</option>
+                      <option value="python">Python</option>
+                      <option value="json">JSON</option>
+                      <option value="html">HTML</option>
+                      <option value="css">CSS</option>
+                    </select>
+                  </div>
+
+                  <CodeEditor
+                    value={editContent}
+                    onChange={setEditContent}
+                    language={editLanguage}
+                  />
+                </>
+              ) : (
+                <>
+                  <label htmlFor="edit-content">Innehåll</label>
+                  <textarea
+                    id="edit-content"
+                    value={editContent}
+                    onChange={(event) => setEditContent(event.target.value)}
+                    rows={10}
+                  />
+                </>
+              )}
             </div>
 
             <button type="submit" disabled={saving}>
