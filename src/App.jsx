@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import {io} from 'socket.io-client'
 import './App.css'
 import AuthForm from './components/AuthForm.jsx'
 import CodeEditor from './components/CodeEditor'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://dv1677-crusher.nplab.bth.se'
 
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem('token'))
@@ -34,6 +36,9 @@ function App() {
   const [editingCommentLine, setEditingCommentLine] = useState('')
   const [commentSaving, setCommentSaving] = useState(false)
 
+  const [socket, setSocket] = useState(null)
+  const saveTimer = useRef(null)
+
   function handleUnauthorized(response) {
   if (response.status === 401) {
     localStorage.removeItem('token')
@@ -45,6 +50,185 @@ function App() {
   }
 
   return false
+}
+
+//skapa socket.io anslutning for both documents and comments
+useEffect(() => {
+    if (!token) {
+      return
+    }
+
+    const newSocket = io(SOCKET_URL)
+
+    setSocket(newSocket)
+
+    newSocket.on('connect', () => {
+      console.log('Socket.IO ansluten:', newSocket.id)
+    })
+
+    newSocket.on('connect_error', (err) => {
+      console.error('Socket.IO connection error:', err.message)
+    })
+
+    return () => {
+      console.log('Stänger Socket.IO-anslutning')
+
+      newSocket.disconnect()
+      setSocket(null)
+    }
+  }, [token])
+
+// Lyssna på uppdateringar från andra klienter
+  useEffect(() => {
+    if (!socket) {
+      return
+    }
+
+    function handleDocumentUpdated(updatedDocument) {
+      // Uppdatera dokumentet i listan
+      setDocuments((currentDocuments) =>
+        currentDocuments.map((document) =>
+          document._id === updatedDocument._id
+            ? updatedDocument
+            : document
+        )
+      )
+
+      // Om dokumentet är öppet, uppdatera det också
+      setSelectedDocument((currentDocument) => {
+        if (!currentDocument) {
+          return currentDocument
+        }
+
+        if (currentDocument._id !== updatedDocument._id) {
+          return currentDocument
+        }
+
+        return updatedDocument
+      })
+
+      // Uppdatera edit-field om det är dokumentet vi tittar på
+      setEditTitle((currentTitle) => {
+        if (!selectedDocument) {
+          return currentTitle
+        }
+
+        if (selectedDocument._id !== updatedDocument._id) {
+          return currentTitle
+        }
+
+        return updatedDocument.title
+      })
+
+      setEditContent((currentContent) => {
+        if (!selectedDocument) {
+          return currentContent
+        }
+
+        if (selectedDocument._id !== updatedDocument._id) {
+          return currentContent
+        }
+
+        return updatedDocument.content
+      })
+    }
+
+    socket.on('document:updated', handleDocumentUpdated)
+
+    return () => {
+      socket.off('document:updated', handleDocumentUpdated)
+    }
+  }, [socket, selectedDocument])
+
+  useEffect(() => {
+  if (!socket) {
+    return
+  }
+
+  function handleRealtimeUpdate(text) {
+
+    setEditContent(text)
+  }
+
+  socket.on(
+    'uppdatering',
+    handleRealtimeUpdate
+  )
+
+  return () => {
+    socket.off(
+      'uppdatering',
+      handleRealtimeUpdate
+    )
+  }
+}, [socket])
+
+async function saveContent(text) {
+  if (!selectedDocument) {
+    return
+  }
+
+  try {
+    const response = await fetch(
+      `${API_URL}/documents/${selectedDocument._id}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: editTitle,
+          content: text,
+        }),
+      }
+    )
+
+    if (handleUnauthorized(response)) {
+      return
+    }
+
+    if (!response.ok) {
+      throw new Error('Autosparningen misslyckades')
+    }
+
+    const updatedDocument = await response.json()
+
+    setSelectedDocument(updatedDocument)
+
+    setDocuments((currentDocuments) =>
+      currentDocuments.map((document) =>
+        document._id === updatedDocument._id
+          ? updatedDocument
+          : document
+      )
+    )
+
+  } catch (err) {
+    console.error('Fel vid autosparning:', err)
+    setError(err.message)
+  }
+}
+
+function handleContentChange(text) {
+
+  // Uppdatera min egen editor
+  setEditContent(text)
+
+  // Skicka texten till andra användare
+  if (socket && selectedDocument) {
+    socket.emit('redigera', {
+      doc: selectedDocument._id,
+      text,
+    })
+  }
+
+  // Debounce
+  clearTimeout(saveTimer.current)
+
+  saveTimer.current = setTimeout(() => {
+    saveContent(text)
+  }, 1000)
 }
 
 useEffect(() => {
@@ -139,6 +323,12 @@ useEffect(() => {
       setEditType(data.type || 'text')
       setEditLanguage(data.language || 'javascript')
       fetchComments(data._id)
+
+      // Joina dokumentets Socket.IO-room
+      if (socket) {
+        socket.emit('join', id)
+      }
+
     } catch (err) {
       setError(err.message)
     }
@@ -245,6 +435,55 @@ useEffect(() => {
     }
   }
 
+  //kod for socket kommentarer
+  useEffect(() => {
+  if (!socket || !selectedDocument?._id) {
+    return
+  }
+
+  const documentId = selectedDocument._id
+
+  // Gå med i dokumentets Socket.IO-rum
+  socket.emit('join', documentId)
+
+  // Ny kommentar
+  function handleCommentCreated(newComment) {
+    if (String(newComment.documentId) !== String(documentId)) {
+      return
+    }
+
+    setComments((currentComments) => {
+      const exists = currentComments.some(
+        (comment) =>  String(comment._id) === String(newComment._id)
+      )
+
+      if (exists) {
+        return currentComments
+      }
+
+      return [...currentComments, newComment]
+    })
+  }
+
+  // Borttagen kommentar
+  function handleCommentDeleted({ _id }) {
+    setComments((currentComments) =>
+      currentComments.filter(
+        (comment) => comment._id !== _id
+      )
+    )
+  }
+
+  socket.on('comment:created', handleCommentCreated)
+  socket.on('comment:deleted', handleCommentDeleted)
+
+  return () => {
+    socket.off('comment:created', handleCommentCreated)
+    socket.off('comment:deleted', handleCommentDeleted)
+  }
+}, [socket, selectedDocument?._id])
+
+//kod for socket for comments ends here
   async function fetchComments(documentId) {
     setCommentsLoading(true)
     setComments([])
@@ -310,12 +549,7 @@ useEffect(() => {
         throw new Error('Kunde inte skapa kommentaren')
       }
 
-      const newComment = await response.json()
-
-      setComments((currentComments) => [
-        ...currentComments,
-        newComment,
-      ])
+      await response.json()
 
       setCommentLine('')
       setCommentText('')
@@ -631,7 +865,7 @@ useEffect(() => {
 
                   <CodeEditor
                     value={editContent}
-                    onChange={setEditContent}
+                    onChange={handleContentChange}
                     language={editLanguage}
                   />
                 </>
@@ -641,7 +875,7 @@ useEffect(() => {
                   <textarea
                     id="edit-content"
                     value={editContent}
-                    onChange={(event) => setEditContent(event.target.value)}
+                    onChange={(event) => handleContentChange(event.target.value)}
                     rows={10}
                   />
                 </>
