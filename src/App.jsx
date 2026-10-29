@@ -26,6 +26,8 @@ function App() {
   const [shareEmail, setShareEmail] = useState('')
   const [sharing, setSharing] = useState(false)
   const [shareMessage, setShareMessage] = useState('')
+  const [popupMessage, setPopupMessage] = useState('')
+  const [popupType, setPopupType] = useState('success')
   const [comments, setComments] = useState([])
   const [commentLine, setCommentLine] = useState('')
   const [commentText, setCommentText] = useState('')
@@ -398,6 +400,7 @@ useEffect(() => {
 
     setSharing(true)
     setShareMessage('')
+    setPopupMessage('')
     setError(null)
 
     try {
@@ -420,7 +423,14 @@ useEffect(() => {
       }
 
       if (!response.ok) {
-        throw new Error('Kunde inte dela dokumentet')
+        const text = await response.text()
+        let message = 'Kunde inte dela dokumentet'
+
+        if (text.includes('Document is already shared with this user')) {
+          message = 'Dokumentet är redan delat med den här användaren'
+        }
+
+        throw new Error(message)
       }
 
       const updatedDocument = await response.json()
@@ -428,8 +438,12 @@ useEffect(() => {
       setSelectedDocument(updatedDocument)
       setShareEmail('')
       setShareMessage('Dokumentet har delats!')
+      setPopupMessage('Dokumentet har delats!')
+      setPopupType('success')
     } catch (err) {
       setError(err.message)
+      setPopupMessage(err.message)
+      setPopupType('error')
     } finally {
       setSharing(false)
     }
@@ -722,23 +736,61 @@ useEffect(() => {
 
   if (!token) {
     return (
-      <main>
+      <main className="app-layout">
+
+        {popupMessage && (
+          <div className={`popup-message ${popupType}`} role="alert">
+            <span>{popupMessage}</span>
+
+            <button
+              type="button"
+              onClick={() => setPopupMessage('')}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         <h1>SSR Editor</h1>
-        <AuthForm apiUrl={API_URL} onLogin={handleLogin} />
+        <AuthForm
+          apiUrl={API_URL}
+          onLogin={handleLogin}
+          setPopupMessage={setPopupMessage}
+          setPopupType={setPopupType}
+        />
       </main>
     )
   }
 
   return (
-    <main>
-      <h1>SSR Editor</h1>
+    <main className="app-layout">
 
-      {user && <p>Inloggad som: {user.email}</p>}
+      {popupMessage && (
+        <div className={`popup-message ${popupType}`} role="alert">
+          <span>{popupMessage}</span>
 
-      <button type="button" onClick={handleLogout}>
-        Logga ut
-      </button>
+          <button
+            type="button"
+            onClick={() => setPopupMessage('')}
+          >
+            ×
+          </button>
+        </div>
+      )}
+      <header className="app-header">
+        <h1>SSR Editor</h1>
 
+        <div className="header-user">
+          {user && <p>Inloggad som: {user.email}</p>}
+
+          <button type="button" onClick={handleLogout}>
+            Logga ut
+          </button>
+        </div>
+      </header>
+
+      <div className="workspace">
+      <aside className="documents-sidebar">
       <h2>Dokument</h2>
 
           <form onSubmit={createDocument}>
@@ -814,9 +866,11 @@ useEffect(() => {
           </li>
         ))}
       </ul>
+    </aside>
 
       {selectedDocument && (
-        <section>
+        <>
+        <section className="editor-panel">
           <h2>Redigera dokument</h2>
 
           <form onSubmit={updateDocument}>
@@ -886,7 +940,9 @@ useEffect(() => {
               {saving ? 'Sparar...' : 'Spara ändringar'}
             </button>
           </form>
+          </section>
 
+          <aside className="tools-sidebar">
           <h3>Dela dokument</h3>
 
           <form onSubmit={shareDocument}>
@@ -1019,8 +1075,10 @@ useEffect(() => {
               ))}
             </ul>
           )}
-        </section>
+        </aside>
+        </>
       )}
+      </div>
     </main>
   )
 }
