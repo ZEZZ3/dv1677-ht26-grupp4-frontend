@@ -3,6 +3,20 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 
+describe('App', () => {
+  it('visar rubriken SSR Editor', () => {
+    render(<App />)
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'SSR Editor',
+      })
+    ).toBeInTheDocument()
+  })
+})
+
+/** 
 describe('Registrering', () => {
   it('skapar ett konto och visar ett bekräftelsemeddelande', async () => {
     const user = userEvent.setup()
@@ -34,23 +48,4 @@ describe('Registrering', () => {
     ).toBeInTheDocument()
   })
 })
-
-
-/**
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import App from './App'
-
-describe('App', () => {
-  it('visar rubriken SSR Editor', () => {
-    render(<App />)
-
-    expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'SSR Editor',
-      })
-    ).toBeInTheDocument()
-  })
-})
- */
+*/
