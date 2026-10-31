@@ -906,12 +906,14 @@ useEffect(() => {
           Skapa dokument
         </button>
 
-        <button
-          type="button"
-          onClick={() => setShowDeleteForm(!showDeleteForm)}
-        >
-          Ta bort dokument
-        </button>
+        {documents.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowDeleteForm(!showDeleteForm)}
+          >
+            Ta bort dokument
+          </button>
+        )}
       </div>
       </form>
 
