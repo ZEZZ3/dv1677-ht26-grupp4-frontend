@@ -78,6 +78,9 @@ Ange backend-API:ets adress:
 ```env
 VITE_API_URL=https://dv1677-crusher.nplab.bth.se/api
 ```
+```env
+VITE_SOCKET_URL=https://dv1677-crusher.nplab.bth.se
+```
 
 Starta utvecklingsservern:
 
