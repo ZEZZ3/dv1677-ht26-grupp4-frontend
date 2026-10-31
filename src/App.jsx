@@ -18,6 +18,9 @@ function App() {
   const [newContent, setNewContent] = useState('')
   const [newType, setNewType] = useState('text')
   const [newLanguage, setNewLanguage] = useState('javascript')
+  const [showDeleteForm, setShowDeleteForm] = useState(false)
+  const [documentToDelete, setDocumentToDelete] = useState('')
+  const [deletingDocument, setDeletingDocument] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editContent, setEditContent] = useState('')
   const [editType, setEditType] = useState('text')
@@ -675,6 +678,63 @@ useEffect(() => {
     }
   }
 
+  async function deleteDocument() {
+  if (!documentToDelete) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    'Är du säker på att du vill ta bort dokumentet?'
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  setDeletingDocument(true)
+  setError(null)
+
+  try {
+    const response = await fetch(
+      `${API_URL}/documents/${documentToDelete}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+
+    if (handleUnauthorized(response)) {
+      return
+    }
+
+    if (!response.ok) {
+      throw new Error('Kunde inte ta bort dokumentet')
+    }
+
+    setDocuments((currentDocuments) =>
+      currentDocuments.filter(
+        (document) => document._id !== documentToDelete
+      )
+    )
+
+    if (selectedDocument?._id === documentToDelete) {
+      setSelectedDocument(null)
+      setComments([])
+    }
+
+    setDocumentToDelete('')
+    setShowDeleteForm(false)
+    setPopupMessage('Dokumentet har tagits bort')
+    setPopupType('success')
+  } catch (err) {
+    setError(err.message)
+  } finally {
+    setDeletingDocument(false)
+  }
+}
+
   async function createDocument(event) {
     event.preventDefault()
     setError(null)
@@ -841,10 +901,51 @@ useEffect(() => {
         />
       </div>
 
-      <button type="submit">
-        Skapa dokument
-      </button>
-    </form>
+      <div className="document-actions">
+        <button type="submit">
+          Skapa dokument
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowDeleteForm(!showDeleteForm)}
+        >
+          Ta bort dokument
+        </button>
+      </div>
+      </form>
+
+      {showDeleteForm && (
+        <div className="delete-document-form">
+          <h3>Ta bort dokument</h3>
+
+          <label htmlFor="document-to-delete">
+            Välj dokument
+          </label>
+
+          <select
+            id="document-to-delete"
+            value={documentToDelete}
+            onChange={(event) => setDocumentToDelete(event.target.value)}
+          >
+            <option value="">Välj ett dokument</option>
+
+            {documents.map((document) => (
+              <option key={document._id} value={document._id}>
+                {document.title}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={deleteDocument}
+            disabled={!documentToDelete || deletingDocument}
+          >
+            {deletingDocument ? 'Tar bort...' : 'Ta bort valt dokument'}
+          </button>
+        </div>
+      )}
 
       {loading && <p>Laddar dokument...</p>}
 
