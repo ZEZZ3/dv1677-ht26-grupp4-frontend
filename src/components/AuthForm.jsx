@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-function AuthForm({ apiUrl, onLogin }) {
+function AuthForm({ apiUrl, onLogin, setPopupMessage, setPopupType }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState('login')
@@ -25,14 +25,27 @@ function AuthForm({ apiUrl, onLogin }) {
         }),
       })
 
-      const data = await response.json()
+      const text = await response.text()
+      let data = {}
+
+      try {
+        data = JSON.parse(text)
+      } catch {
+      }
 
       if (!response.ok) {
-        throw new Error(data.message || 'Något gick fel')
+        let errorMessage = data.message || 'Kunde inte registrera eller logga in'
+
+        if (text.includes('User already registered!')) {
+          errorMessage = 'E-postadressen är redan registrerad'
+        }
+
+        throw new Error(errorMessage)
       }
 
       if (mode === 'register') {
-        setMessage('Kontot skapades. Du kan nu logga in.')
+        setPopupMessage('Kontot skapades! Du kan nu logga in.')
+        setPopupType('success')
         setMode('login')
         setPassword('')
         return
@@ -41,7 +54,8 @@ function AuthForm({ apiUrl, onLogin }) {
       localStorage.setItem('token', data.accessToken)
       onLogin(data.accessToken)
     } catch (error) {
-      setMessage(error.message)
+      setPopupMessage(error.message)
+      setPopupType('error')
     } finally {
       setLoading(false)
     }
