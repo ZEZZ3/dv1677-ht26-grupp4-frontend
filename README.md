@@ -1,48 +1,85 @@
-# DV1677 HT26 Grupp 4 - Frontend
+# DV1677 HT26 Grupp 4 – Frontend
 
-Frontend för grupp 4:s projekt i kursen DV1677 JavaScript-baserade webbramverk.
+Frontend för grupp 4:s projekt i kursen DV1677 JavaScript-baserade webbramverk vid Blekinge Tekniska Högskola.
 
-Projektet är en fristående SPA byggd med React och Vite. Frontenden kommunicerar med gruppens JSON-API och kan lista dokument samt visa innehållet i ett valt dokument.
+Projektet är en webbaserad text- och kodeditor byggd med React och Vite. Användare kan skapa, redigera, dela och kommentera dokument. Applikationen använder Socket.IO för realtidsredigering och Monaco Editor för kodredigering.
 
 ## Gruppmedlemmar
 
-- Hussein Sabte - GitHub: ZEZZ3
-- Daud Nawaz - GitHub: Daudnaw
+- Hussein Sabte – GitHub: [ZEZZ3](https://github.com/ZEZZ3)
+- Daud Nawaz – GitHub: [Daudnaw](https://github.com/Daudnaw)
 
-## Teknik
+## Tekniker
 
-- React
-- Vite
+- React och Vite
 - JavaScript
+- Socket.IO Client
+- Monaco Editor
+- JWT för autentisering
+- Vitest och React Testing Library för automatiserade tester
+- GitHub Actions och GitHub Pages för deployment
 
-## Driftsatt applikation
+## Länkar
 
-Frontend (GitHub Pages):
+**Driftsatt frontend:**
 
-https://ZEZZ3.github.io/dv1677-ht26-grupp4-frontend/
+https://zezz3.github.io/dv1677-ht26-grupp4-frontend/
 
-Backend API:
+**Frontend-repository:**
 
-https://dv1677-crusher.nplab.bth.se/api/documents
+https://github.com/ZEZZ3/dv1677-ht26-grupp4-frontend
+
+**Backend-repository:**
+
+https://github.com/Daudnaw/dv1677-ht26-grupp4-backend
+
+**Backend API:**
+
+https://dv1677-crusher.nplab.bth.se/api
+
+Observera att vissa API-endpoints kräver en giltig JWT-token.
+
+## Funktionalitet
+
+- Registrering och inloggning med JWT
+- Skapa, visa, redigera och ta bort dokument
+- Dela dokument med andra användare
+- Realtidsredigering med Socket.IO
+- Kommentera dokument och uppdatera kommentarer i realtid
+- Välja mellan textdokument och koddokument
+- Kodredigering med Monaco Editor
+- Syntaxfärgning för flera programmeringsspråk
+- Automatisk sparning av dokumentändringar
+- Integration med backend för Discord-notifieringar
 
 ## Köra projektet lokalt
 
-Klona repot och installera dependencies:
+Klona projektet:
+
+```bash
+git clone https://github.com/ZEZZ3/dv1677-ht26-grupp4-frontend.git
+cd dv1677-ht26-grupp4-frontend
+```
+
+Installera beroenden:
 
 ```bash
 npm install
 ```
 
-Skapa en `.env`-fil i projektets rot. Du kan utgå från `.env.example`:
+Skapa en `.env`-fil med hjälp av `.env.example`:
 
 ```bash
 cp .env.example .env
 ```
 
-Filen ska innehålla:
+Ange backend-API:ets adress:
 
 ```env
 VITE_API_URL=https://dv1677-crusher.nplab.bth.se/api
+```
+```env
+VITE_SOCKET_URL=https://dv1677-crusher.nplab.bth.se
 ```
 
 Starta utvecklingsservern:
@@ -51,33 +88,44 @@ Starta utvecklingsservern:
 npm run dev
 ```
 
-Öppna sedan adressen som Vite visar i terminalen, normalt:
+Öppna adressen som visas i terminalen, vanligtvis `http://localhost:5173/`.
 
-```text
-http://localhost:5173/
+## Tester
+
+Frontend använder Vitest och React Testing Library.
+
+Kör testerna:
+
+```bash
+npm test
 ```
 
-## Build
+För att köra testerna i bevakningsläge:
 
-För att bygga projektet:
+```bash
+npm run test:watch
+```
+
+Testerna finns i `src/App.test.jsx`.
+
+## Bygga projektet
 
 ```bash
 npm run build
 ```
 
-```
-
 Den färdiga versionen skapas i katalogen `dist`.
 
+För att förhandsgranska den byggda versionen:
+
+```bash
+npm run preview
+```
 
 ## Deployment
 
-Frontenden driftsätts automatiskt till GitHub Pages med GitHub Actions vid push till `main`.
+Frontenden driftsätts automatiskt till GitHub Pages via GitHub Actions vid push till `main` eller `dev`.
 
-Vid deployment används miljövariabeln `VITE_API_URL` för adressen till det driftsatta backend-API:t.
+Vid deployment används miljövariabeln `VITE_API_URL` för att ansluta till det driftsatta backend-API:t.
 
-## Funktionalitet
-
-- Hämtar dokument från gruppens JSON-API
-- Visar en lista med dokument
-- Visar innehållet i ett valt dokument
+Workflow-filen finns i `.github/workflows/deploy.yml`.
